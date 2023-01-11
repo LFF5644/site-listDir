@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<?=globals.tmp_head("LFF File Meneger",input)?>
+</head>
+<body><center>
+<h1><?=globals.tmp_nameAsA()?> File Manager/Viewer</h1>
+<h2>
+	<p>
+		<label>Path: 
+			<input id="input_path" name="listDirPath" style="max-width: 300px;" autocomplete type="text" value="/" title="Input Path!" required onchange="GetPathItems();">
+			<button class="styledBTN" onclick="GetPathItems()" id="button_applay"> > </button>
+		</label>
+		
+	</p>
+</h2>
+
+<fieldset>
+	<legend>Path: <code id="code_path">?</code></legend>
+	<div id="infos">
+		<h1 id="tmp0" class="orange">Please Wait...</h1>
+	</div>
+	<div id="div_showFiles"></div>
+</fieldset>
+
+<script>
+let elements=[];
+const getDirCMD="<?=globals.vars['api_listDir.api']?>?dir=[path]&sab=\\n&type=webOnly"
+const hash=location.hash.substr(1);
+const DARK=JSON.parse("<?=globals.functions.GetDark(input)?>");
+let disableMe=["input_path","button_applay"];
+let elementState="enabled";
+let download_iconFile=false;
+let path="/";
+let path_work="/";
+
+GetFile("/web/listDirICONS.ini",GetCorrectIcon,true)
+
+onhashchange=(receiv=false)=>{
+	if(receiv!==true){
+		setTimeout(()=>{window.onhashchange(true)},100)
+		return(false);
+	}
+	let hash=decodeURI(location.hash.substr(1))
+	if(path!=hash){
+		GetId("input_path").value=hash;
+		con.log("HASH : "+hash)
+		GetPathItems();
+	}
+}
+
+function InfoH1(text,className="red"){
+	try{GetId("tmp0").remove()}catch(e){}
+	let element=CreateElement("h1");
+	element.innerText=text;
+	element.className=className;
+	element.id="tmp0";
+	AppendChild(element,"infos",false);
+}
+function RemoveH1Info(){try{GetId("tmp0").remove();return(true)}catch(e){return(false)}}
+
+function ChangeElementState(disabled=false){
+	elementState=disabled?"disabled":"enabled";
+	for(e of disableMe){
+		if(typeof(e)=="string"){
+			GetId(e).disabled=disabled;
+		}else{
+			e.disabled=disabled;
+		}
+	}
+}
+function GoTo(element,type){
+	if(elementState=="disabled"){con.log("disabled");return("disabled")}
+	element=element.target
+
+	let [itemName,itemType,newTab]=element.args;
+	if(itemType=="file"&&newTab==true){
+		con.log(itemName+", Datei, newTab")
+		open(path_work+itemName)
+	}
+	else if(itemType=="file"&&newTab==false){
+		con.log(itemName+", Datei");
+		location.href=path_work+itemName;
+
+	}
+
+	else if(itemType=="dir"&&newTab==true){
+		con.log(itemName+", Ordner, newTab")
+		open(location.pathname+"#"+path_work+itemName)
+	}
+	else if(itemType=="dir"&&newTab==false){
+		con.log(itemName+", Ordner")
+		GetId("input_path").value=path_work+itemName;
+		GetPathItems();
+	}
+}
+function RemoveElements(){
+	for(e of elements){
+		e.remove();
+	}
+	elements=[];
+}
+function GetPathItems(result=null,receiv=false){
+	if(!receiv){
+		ChangeElementState(true)
+		let input=GetId("input_path");
+		if(input.value!="/"){
+			if(input.value.substr(input.value.length-1)!="/"){
+				con.log(input.value)
+				input.value+="/";
+				con.log(input.value)
+			}
+		}
+		InfoH1("Auf Server Warten...","orange");
+		GetId("code_path").innerText="..."
+		path=GetId("input_path").value;
+		location.hash=path
+		GetFile(REPLACEALL(getDirCMD,[["[path]",path]]),GetPathItems,true)
+	}else if(receiv){
+		ChangeElementState(false)
+		GetId("code_path").innerText="?"
+		if(result=="WRONG SYNTAX"){con.log(result);InfoH1("Falsche Schreibweise","red");return("error")}
+		else if(result=="DIR NOT FOUND!"){con.log(result);InfoH1("Verzeichnis Nicht Gefunden","red");return("error")}
+		else if(result=="ERROR"){con.log(result);InfoH1("Interner Server Fehler","red");return("error")}
+		RemoveH1Info();
+		path=GetId("input_path").value
+		location.hash=path;
+		path_work=GetId("input_path").value
+		GetId("code_path").innerText=path==""?"/":path;
+		result=JSON.parse(result);
+		RemoveH1Info();
+		RemoveElements();
+
+		let table=CreateElement("table");
+		table.border="0px";
+		table.id="table_showFiles";
+		elements.push(table);
+		AppendChild(table,"div_showFiles",false);
+
+		let info=CreateElement("tr");
+		info.innerHTML =`<th>Type</th>`
+		info.innerHTML+=`<th>File-Type</th>`
+		info.innerHTML+=`<th>File</th>`
+		info.innerHTML+=`<th>ICON</th>`
+		AppendChild(info,table)
+
+		for(dir of result.dirs){
+			let elementLine=CreateElement("tr");
+			AppendChild(elementLine,"table_showFiles",false);
+
+			let index_0=CreateElement("td");
+			AppendChild(index_0,elementLine)
+			let index_1=CreateElement("td");
+			AppendChild(index_1,elementLine)
+			let index_2=CreateElement("td");
+			AppendChild(index_2,elementLine)
+			let index_3=CreateElement("td");
+			AppendChild(index_3,elementLine)
+
+			let element=CreateElement("attr");
+			element.innerText="Ordner";
+			element.title=`"${dir}" ist ein Ordner`;
+			AppendChild(element,index_0)
+
+			element=CreateElement("slim");
+			element.innerText="";
+			AppendChild(element,index_1)
+
+			element=CreateElement("a");
+			element.onclick=(element)=>{GoTo(element,"dir")}
+			element.args=[dir,"dir",false]
+			element.className="underLine";
+			element.innerHTML=dir;
+			AppendChild(element,index_2);
+
+			element=CreateElement("img");
+			if(DARK){
+				element.src="/files/img/plusred.png";
+			}else{
+				element.src="/files/img/plus.png";
+			}
+			AttrCSSSet(element,"padding-left","5px")
+			element.args=[dir,"dir",true]
+			element.height=16;
+			element.onclick=(element)=>{GoTo(element,"dir")}
+			AppendChild(element,index_2);
+
+			element=CreateElement("img");
+			element.src="/files/img/folderRED.png";
+			element.width=16
+			AppendChild(element,index_3)
+		}
+		for(file of result.files){
+			let elementLine=CreateElement("tr");
+			AppendChild(elementLine,"table_showFiles",false);
+
+			let index_0=CreateElement("td");
+			AppendChild(index_0,elementLine)
+			let index_1=CreateElement("td");
+			AppendChild(index_1,elementLine)
+			let index_2=CreateElement("td");
+			AppendChild(index_2,elementLine)
+			let index_3=CreateElement("td");
+			AppendChild(index_3,elementLine)
+
+			let element=CreateElement("attr");
+			element.innerText="Datei";
+			element.title=`"${file}" ist eine Datei`;
+			AppendChild(element,index_0)
+
+			element=CreateElement("slim");
+			element.innerText=file.split(".").length==1?"?":file.split(".")[file.split(".").length-1]
+			AppendChild(element,index_1)
+
+			element=CreateElement("a");
+			element.onclick=(element)=>{GoTo(element,"file")}
+			element.args=[file,"file",false]
+			element.className="underLine";
+			element.innerText=file;
+			AppendChild(element,index_2);
+
+			element=CreateElement("img");
+			if(DARK){
+				element.src="/files/img/plusred.png";
+			}else{
+				element.src="/files/img/plus.png";
+			}
+			AttrCSSSet(element,"padding-left","5px")
+			AttrCSSSet(element,"padding-right","10px")
+			element.args=[file,"file",true]
+			element.height=16;
+			element.onclick=(element)=>{GoTo(element,"file")}
+			AppendChild(element,index_2);
+
+			element=CreateElement("img");
+			element.src=GetCorrectIcon(file);
+			element.height=16;
+			AppendChild(element,index_3)
+		}
+	}
+}
+function GetCorrectIcon(file,receiv=false){
+	if(!receiv){
+		if(!download_iconFile){
+			GetFile("/web/listDirICONS.ini",GetCorrectIcon,file)
+			return("WAIT")
+		}
+		if(file.split(".").length==1){
+			return GetLine(iconINI,"file_plainText")[1];
+		}
+		let fileType=file.split(".");
+		let res;
+		fileType=fileType[fileType.length-1].toLowerCase();
+		let imgTypes=["png","jpg","jpeg","ico","icon"];
+		let isImg=false;
+
+		for(it of imgTypes){
+			if(fileType==it){isImg=true;break}
+		}
+		if(isImg){
+			let path=GetId("input_path");
+			let len=path.value.length-1
+			return(path.value+file);
+		}
+		else{
+			res=GetLine(iconINI,"fileType_"+fileType);
+		}
+		if(typeof(res)=="string"){res=GetLine(iconINI,"file_plainText")}
+		con.log(res)
+		return(res[1])
+	}else{
+		download_iconFile=true;
+		iconINI=file;
+	}
+}
+function KeyPressed(result){
+	con.log(result.key)
+}
+if(location.hash!=""){
+	GetId("input_path").value=location.hash.substr(1);
+}
+
+GetPathItems();
+</script>
+</center></body>
+</html>
