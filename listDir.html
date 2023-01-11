@@ -1,10 +1,27 @@
-<!DOCTYPE html>
+<?
+	const {
+		importHead,
+	}=globals.functions;
+?><!DOCTYPE html>
+<!--CREATED Fr 30 Sep 2022 13∶38-->
+<!--UPDATED Mi 11 Jan 2023 09∶45-->
 <html>
 <head>
-	<?=globals.tmp_head("LFF File Meneger",input)?>
+<?=importHead({
+	input,
+	title:"Server File Viewer",
+	css:[
+		"/css/main.css",
+		"/css/dynamic.css?imports=styledBTN,orange,red,underLine",
+	],
+	script:[
+		"/scripts/import.js",
+	//	"/web/listDir/app.js",
+	],
+})?>
 </head>
 <body><center>
-<h1><?=globals.tmp_nameAsA()?> File Manager/Viewer</h1>
+<h1>Server File Viewer</h1>
 <h2>
 	<p>
 		<label>Path: 
@@ -24,17 +41,16 @@
 </fieldset>
 
 <script>
+GetFile("/web/listDir/listDirICONS.ini",GetCorrectIcon,true);
 let elements=[];
 const getDirCMD="<?=globals.vars['api_listDir.api']?>?dir=[path]&sab=\\n&type=webOnly"
 const hash=location.hash.substr(1);
 const DARK=JSON.parse("<?=globals.functions.GetDark(input)?>");
-let disableMe=["input_path","button_applay"];
+const disableMe=["input_path","button_applay"];
 let elementState="enabled";
 let download_iconFile=false;
 let path="/";
 let path_work="/";
-
-GetFile("/web/listDirICONS.ini",GetCorrectIcon,true)
 
 onhashchange=(receiv=false)=>{
 	if(receiv!==true){
@@ -274,13 +290,17 @@ function GetCorrectIcon(file,receiv=false){
 	}
 }
 function KeyPressed(result){
-	con.log(result.key)
+	//con.log(result.key);
 }
+
 if(location.hash!=""){
-	GetId("input_path").value=location.hash.substr(1);
+	const input=GetId("input_path");
+	input.value=location.hash.substr(1);
 }
 
 GetPathItems();
+
 </script>
-</center></body>
+</center>
+</body>
 </html>
