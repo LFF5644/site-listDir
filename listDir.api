@@ -1,0 +1,61 @@
+//<?
+const fs = require('fs');
+const os = require('os');
+
+const dirName=input.dir;
+const pwd=input.pwd;
+let rightPWD;
+let dirType=input.type;
+let sab=input.sab;
+let dir=undefined;
+
+//lol.includes("LOL")===TRUE
+if(sab===undefined||sab==="\\n"){sab="\n"}
+if(sab.includes("\\n")){sab=sab.replace("\\n","\n")}
+
+try{rightPWD=fs.readFileSync('data/.pwd.dat',"utf8")}
+catch(e){rightPWD=fs.writeFileSync('data/.pwd.dat',pwd)}
+
+if(dirType===undefined){dirType="webOnly"}
+if(String(dirName).includes("..")){dir="WRONG SYNTAX"}
+else if(dirType==="webOnly"){
+	let dir_raw=undefined;
+	try{dir_raw=fs.readdirSync('public'+dirName)}
+	catch(e){dir_raw="DIR NOT FOUND!"}
+	if(dir_raw!="DIR NOT FOUND!"){
+		dir={};
+		dir.files=[];
+		dir.dirs=[];
+		dir.dontKonw=[];
+		let fileDir,a;
+		let sl="";
+		let br=false;
+		for(a of Array(5)){
+			try{
+				for(fileDir of dir_raw){
+					let who='public'+dirName+sl+fileDir;
+					let isDir=fs.lstatSync(who).isDirectory();
+					let isFile=fs.lstatSync(who).isFile();
+					if(isFile){
+						dir.files.push(fileDir)
+					}else if(isDir){
+						dir.dirs.push(fileDir)
+					}else{
+						dir.dontKonw.push(fileDir)
+					}
+				}
+				br=true
+			}catch(e){br=false;sl="/"}
+			if(br==true){break}
+		}
+		if(br==false){dir="WRONG SYNTAX"}
+	}else{dir=dir_raw}
+}
+else if(dirType==="allFiles"||dirType==="all"||dirType==="system"||dirType==="root"){
+	dir="THIS IS NOT CODET!"
+}
+let dir_str="ERROR";
+if(typeof(dir)!="string"){
+	dir_str=JSON.stringify(dir,null,2).split("  ").join("\t")
+}else{dir_str=dir}
+//?><?=dir_str?>
