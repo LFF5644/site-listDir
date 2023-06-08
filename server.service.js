@@ -10,7 +10,7 @@ const dynamic={
 };
 
 const socketListeners={
-	"get-folderItems": (folder="",callback=fn)=>{
+	getFolderItems: (folder="",callback=fn)=>{
 		folder=removeNotAllowed(folder);
 		const items=directoryTools.getFolderItems("public/"+folder);
 		console.log("items:",items);
