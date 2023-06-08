@@ -1,0 +1,28 @@
+<?
+	const {importHead}=globals.functions;
+	const {hostname}=require("os");
+	const isDev=hostname()!=="lff-raspberrypi";
+?><!DOCTYPE html>
+<!--Created 09.03.2023 at 09:14-->
+<html>
+	<head>
+		<?=importHead({
+			input,
+			title:"Explorer by LFF5644",
+			tabs:2,
+			css:[
+				"/css/main.css",
+				"/web/listDir/style.css",
+			],
+			script:[
+				((input.useLocal||input.legacy)?"/files/other/socket.io/":"https://cdn.socket.io/4.5.4/")+"socket.io.min.js",
+				((input.useLocal||input.legacy)?"/files/other/lui/":"https://cdn.jsdelivr.net/gh/L3P3/lui@7c057f498ee8813053d7f7cff3af7141b53ced03/")+(isDev&&!input.legacy?"lui.dev.js":"lui.legacy.js"),
+			],
+		})?>
+	</head>
+	<body>
+		<h1>Web Frame Work ist beschädigt oder kaput!</h1>
+		<noscript><h1>UND JavaScript ist aus!</h1></noscript>
+		<script src=<?=((isDev||input.raw)&&!input.build)?"/web/listDir/app.js":"/web/listDir/build/app.js"?>></script>
+	</body>
+</html>
