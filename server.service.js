@@ -13,13 +13,12 @@ const dynamic={
 const socketListeners={
 	getFolderItems: (folder="",callback=fn)=>{
 		folder=removeNotAllowed(folder);
-		const items=(directoryTools.getFolderItems("public/"+folder)
-			.map(item=>({
-				id: randomBytes(8).toString("hex"),
-				name: item.name,
-				type: item.type,
-			}))
-		);
+		let items=directoryTools.getFolderItems("public/"+folder);
+		if(items) items=items.map(item=>({
+			id: randomBytes(8).toString("hex"),
+			name: item.name,
+			type: item.type,
+		}));
 		console.log("items:",items);
 		callback(items);
 	},
