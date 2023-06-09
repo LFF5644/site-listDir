@@ -11,6 +11,7 @@ const {
 const model={
 	init:()=>({
 		connected: false,
+		hash: location.hash.substring(1),
 		path: "/",
 		pathItems_waitFor: true,
 		pathItems: null,
@@ -20,6 +21,7 @@ const model={
 		...state,
 		...object,
 	}),
+	debugger: s=>console.log(s)?s:s,
 };
 
 // Views
@@ -37,8 +39,8 @@ function ViewExplorer({state,actions}){return[
 	node_dom("h3[innerText=Verzeichnis nicht gefunden!][style=color:red]"),
 
 	!state.pathItems&&
-	!state.pathItems_waitFor&&
-	node_dom("h3[innerText=Verzeichnis nicht gefunden!][style=color:red]"),
+	state.pathItems_waitFor&&
+	node_dom("h3[innerText=Warte auf Server ...][style=color:orange]"),
 ]}
 function ExplorerItem({I,state,actions}){return[ // component, map: Explorer Items
 	node_dom("li",null,[
@@ -73,6 +75,14 @@ init(()=>{
 		socket.on("disconnect",()=>{
 			actions.assign({connected: false});
 		});
+
+		// add other event listeners
+		window.onhashchange=()=>{
+			actions.assign({
+				hash: location.hash.substring(1),
+			});
+		};
+
 	});
 
 	// on socket connection change
@@ -86,7 +96,12 @@ init(()=>{
 			actions.assign({path: path+"/"});
 			return;
 		}
+		if(!path.startsWith("/")){
+			actions.assign({path: "/"+path});
+			return;
+		}
 		console.log("set path to: "+path);
+		location.hash=path;
 		actions.assign({
 			pathItems_waitFor: true,
 			pathItems: null,
@@ -101,6 +116,12 @@ init(()=>{
 		});
 
 	},[state.path]);
+
+	// on hash change && view explorer
+	hook_effect(hash=>{
+		console.log("hash:",hash);
+		if(state.path!==hash) actions.assign({path:hash});
+	},[state.hash]);
 
 	return[null,[
 		node_dom("h1[innerText=Datei Explorer]",{
