@@ -27,7 +27,15 @@ const model={
 // Views
 // View: Explorer
 function ViewExplorer({state,actions}){return[
-	node_dom("p",{innerText:"Verzeichnis: "+state.path}),
+	node_dom("p[style=cursor:pointer]",{
+		innerText:"Verzeichnis: "+state.path,
+		onclick:()=>{
+			const newPath=prompt("Neues Verzeichnis: ",state.path);
+			actions.assign({
+				path: newPath===null?state.path:newPath,
+			});
+		}
+	}),
 
 	state.pathItems&&
 	node_dom("ul",null,[
