@@ -11,7 +11,7 @@ const {
 const model={
 	init:()=>({
 		connected: false,
-		hash: location.hash.substring(1),
+		hash: unescape(location.hash.substring(1)),
 		path: "/",
 		pathItems_waitFor: true,
 		pathItems: null,
@@ -87,7 +87,7 @@ init(()=>{
 		// add other event listeners
 		window.onhashchange=()=>{
 			actions.assign({
-				hash: location.hash.substring(1),
+				hash: unescape(location.hash.substring(1)),
 			});
 		};
 
