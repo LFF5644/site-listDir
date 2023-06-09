@@ -1,3 +1,4 @@
+const {randomBytes}=require("crypto");
 const directoryTools=require("directory-tools");
 const fs=require("fs");
 const socketIo=require("socket.io");
@@ -12,7 +13,13 @@ const dynamic={
 const socketListeners={
 	getFolderItems: (folder="",callback=fn)=>{
 		folder=removeNotAllowed(folder);
-		const items=directoryTools.getFolderItems("public/"+folder);
+		const items=(directoryTools.getFolderItems("public/"+folder)
+			.map(item=>({
+				id: randomBytes(8).toString("hex"),
+				name: item.name,
+				type: item.type,
+			}))
+		);
 		console.log("items:",items);
 		callback(items);
 	},
