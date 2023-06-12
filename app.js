@@ -1,4 +1,5 @@
 const {
+	hook_assert,
 	hook_effect,
 	hook_memo,
 	hook_model,
@@ -14,9 +15,9 @@ const fileExtensions=[
 	["*.dark.css","//upload.wikimedia.org/wikipedia/commons/3/3d/CSS.3.svg"], // duplicate
 	["*.old","//upload.wikimedia.org/wikipedia/commons/thumb/0/0d/User-trash.svg/1200px-User-trash.svg.png"], //tmp
 	["*.old.*","//upload.wikimedia.org/wikipedia/commons/thumb/0/0d/User-trash.svg/1200px-User-trash.svg.png"], //tmp
-	["*.service.js","/files/img/fileServer.png"], // tmps
+	["*.service.js","/files/img/fileServer.png"], // tmp
 
-	["*.api","/files/img/serverFile.png"],
+	["*.api","/files/img/fileServer.png"],
 	["*.bat","/files/img/fileBATCH.png"],
 	["*.css","//upload.wikimedia.org/wikipedia/commons/3/3d/CSS.3.svg"], // duplicate
 	["*.exe","/files/img/fileEXE.png"],
@@ -34,6 +35,7 @@ const fileExtensions=[
 const hiddenItems=[
 	".git",
 	".github",
+	".vscode",
 ];
 const previewItems={
 	video:[
@@ -70,7 +72,7 @@ const model={
 };
 
 // library functions
-function isExtention(extensionsFromFile,hasExtention){
+function isExtension(extensionsFromFile,hasExtention){
 	if(!extensionsFromFile||!hasExtention) return false;
 	if(!extensionsFromFile.startsWith(".")) extensionsFromFile="."+extensionsFromFile;
 
@@ -95,30 +97,43 @@ function isExtention(extensionsFromFile,hasExtention){
 // Views
 // View: Explorer
 function ViewExplorer({state,actions}){return[
-	node_dom("p[style=cursor:pointer]",{
-		innerText:"Verzeichnis: "+state.path,
-		onclick:()=>{
-			const newPath=prompt("Neues Verzeichnis: ",state.path);
-			actions.assign({
-				path: newPath===null?state.path:newPath,
-			});
-		}
-	}),
+	node_dom("p",null,[
+		node_dom("span[innerText=Verzeichnis: ]"),
+		node_dom("a",{
+			innerText: state.path,
+			href: location.href,
+			onclick:event=>{
+				event.preventDefault();
+				const newPath=prompt("Neues Verzeichnis: ",state.path);
+				actions.assign({
+					path: newPath===null?state.path:newPath,
+				});
+			},
+		}),
+	]),
 
 	state.pathItems&&
+	state.pathItems.length>0&&
 	node_dom("fieldset",null,[
 		node_dom("table",null,[
 			node_map(ExplorerItem,state.pathItems,{state,actions}),
 		]),
 	]),
 	
+	state.pathItems&&
+	state.pathItems.length===0&&
+	node_dom("h3[innerHTML=Verzeichnis ist leer]"),
+
 	!state.pathItems&&
 	!state.pathItems_waitFor&&
 	node_dom("h3[innerText=Verzeichnis nicht gefunden!][style=color:red]"),
 
 	!state.pathItems&&
 	state.pathItems_waitFor&&
-	node_dom("h3[innerText=Warte auf Server ...][style=color:orange]"),
+	node_dom("div",null,[
+		node_dom("h3[innerText=Warte auf Server ...][style=color:orange]"),
+		node_dom("progress"),
+	]),
 ]}
 function ExplorerItem({I,state,actions}){
 	const fileExtension=I.type==="directory"?null:(
@@ -130,6 +145,7 @@ function ExplorerItem({I,state,actions}){
 				.join(".")
 	);
 	return[ // component, map: Explorer Items
+		hook_assert(!hiddenItems.includes(I.name)),
 		node_dom("tr",null,[
 			node_dom("td",null,[
 				node(PreviewItem,{state,I,fileExtension}),
@@ -178,27 +194,27 @@ function ExplorerItem({I,state,actions}){
 }
 function PreviewItem({state,I,fileExtension}){
 	console.log(I.name,fileExtension);
-	const previewImg=fileExtensions.find(item=>isExtention(fileExtension,item[0]));
+	const previewImg=fileExtensions.find(item=>isExtension(fileExtension,item[0]));
 
 	return[ // component, Explorer Preview Item
 		fileExtension&&
 		I.type!=="directory"&&
 		node_dom("span",null,[
-			previewItems.img.some(item=>isExtention(fileExtension,item))&&
+			previewItems.img.some(item=>isExtension(fileExtension,item))&&
 			node_dom("img",{
 				height: 16,
 				src: I.path,
 			}),
 
-			previewItems.video.some(item=>isExtention(fileExtension,item))&&
-			node_dom("video[muted][autoplay][algin=top]",{
+			previewItems.video.some(item=>isExtension(fileExtension,item))&&
+			node_dom("video[muted]",{
 				height: 16,
 				onplay: event=> event.target.muted=true,
 				onclick: event=>{event.target.currentTime=0;event.target.play()},
 				src: I.path,
 			}),
 
-			previewItems.audio.some(item=>isExtention(fileExtension,item))&&
+			previewItems.audio.some(item=>isExtension(fileExtension,item))&&
 			node_dom("img[algin=top]",{
 				height: 16,
 				onclick: event=>{
