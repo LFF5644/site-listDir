@@ -4,3 +4,7 @@ table > tr > td{
 fieldset{
 	width: fit-content;
 }
+.clickText:hover{
+	text-decoration: underline;
+	cursor: pointer;
+}
