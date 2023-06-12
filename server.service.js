@@ -13,10 +13,14 @@ const dynamic={
 const socketListeners={
 	getFolderItems: (folder="",callback=fn)=>{
 		folder=removeNotAllowed(folder);
+		if(!folder.endsWith("/")) folder+="/";
+		if(!folder.startsWith("/")) folder="/"+folder;
+
 		let items=directoryTools.getFolderItems("public/"+folder);
 		if(items) items=items.map(item=>({
 			id: randomBytes(8).toString("hex"),
 			name: item.name,
+			path: item.path?item.path:(folder+item.name),
 			type: item.type,
 		}));
 		console.log("items:",items);
@@ -28,7 +32,10 @@ const socketListeners={
 function removeNotAllowed(string){
 	return(string
 		.split("..").join("")
+		.split(".\.").join("")
+		.split("//").join("/")
 		.split("\\").join("")
+		.split("\~").join("")
 		.split("~").join("")
 	);
 }

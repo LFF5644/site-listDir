@@ -1,0 +1,6 @@
+table > tr > td{
+	padding-right: 20px;
+}
+fieldset{
+	width: fit-content;
+}

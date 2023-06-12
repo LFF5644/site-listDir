@@ -8,6 +8,51 @@ const {
 	node,
 }=window.lui;
 
+const folderIcon="/files/img/folderRED.png";
+const downloadIcon="//pics.freeicons.io/uploads/icons/png/20414393001556860958-512.png"; //tmp
+const fileExtensions=[
+	["*.dark.css","//upload.wikimedia.org/wikipedia/commons/3/3d/CSS.3.svg"], // duplicate
+	["*.old","//upload.wikimedia.org/wikipedia/commons/thumb/0/0d/User-trash.svg/1200px-User-trash.svg.png"], //tmp
+	["*.old.*","//upload.wikimedia.org/wikipedia/commons/thumb/0/0d/User-trash.svg/1200px-User-trash.svg.png"], //tmp
+	["*.service.js","/files/img/fileServer.png"], // tmps
+
+	["*.api","/files/img/serverFile.png"],
+	["*.bat","/files/img/fileBATCH.png"],
+	["*.css","//upload.wikimedia.org/wikipedia/commons/3/3d/CSS.3.svg"], // duplicate
+	["*.exe","/files/img/fileEXE.png"],
+	["*.html","/files/img/fileHTML.png"],
+	["*.ini","//www.freeiconspng.com/thumbs/ini-file-icon/file-ini-icon-11.png"], //tmp
+	["*.js","/files/img/fileJS.png"],
+	["*.json","//cdn.icon-icons.com/icons2/2107/PNG/512/file_type_light_json_icon_130455.png"], //tmp
+	["*.md","https://dalirnet.gallerycdn.vsassets.io/extensions/dalirnet/rtl-markdown/0.0.10/1641721130375/Microsoft.VisualStudio.Services.Icons.Default"], //tmp
+	["*.pdf","//icons.iconarchive.com/icons/papirus-team/papirus-mimetypes/512/app-pdf-icon.png"],
+	["*.py","//www.pythontutorial.net/wp-content/uploads/2020/10/python-tutorial.png"], //tmp
+	["*.txt","/files/img/fileTXT.png"],
+	["*.xml","/files/img/fileXML.png"],
+	["*.zip","/files/img/folder.png"], //tmp
+];
+const hiddenItems=[
+	".git",
+	".github",
+];
+const previewItems={
+	video:[
+		"*.mp4",
+	],
+	img:[
+		"*.gif",
+		"*.ico",
+		"*.jpeg",
+		"*.jpg",
+		"*.png",
+		"*.svg",
+	],
+	audio:[
+		"*.mp3",
+		"*.wav",
+	]
+};
+
 const model={
 	init:()=>({
 		connected: false,
@@ -24,6 +69,29 @@ const model={
 	debugger: s=>console.log(s)?s:s,
 };
 
+// library functions
+function isExtention(extensionsFromFile,hasExtention){
+	if(!extensionsFromFile||!hasExtention) return false;
+	if(!extensionsFromFile.startsWith(".")) extensionsFromFile="."+extensionsFromFile;
+
+	let end=false;
+	let search=hasExtention;
+	let start=false;
+	if(hasExtention.startsWith("*")) start=true;
+	if(hasExtention.endsWith("*")) end=true;
+
+	//debugger;
+
+	if(start) search=search.substring(1);
+	if(end) search=search.substring(0,search.length-1);
+
+	if(start&&end) return extensionsFromFile.includes(search);
+	else if(!start&&!end) return extensionsFromFile===search;
+
+	if(start)return extensionsFromFile.endsWith(search);
+	else if(end) return extensionsFromFile.startsWith(search);
+}
+
 // Views
 // View: Explorer
 function ViewExplorer({state,actions}){return[
@@ -38,8 +106,10 @@ function ViewExplorer({state,actions}){return[
 	}),
 
 	state.pathItems&&
-	node_dom("ul",null,[
-		node_map(ExplorerItem,state.pathItems,{state,actions}),
+	node_dom("fieldset",null,[
+		node_dom("table",null,[
+			node_map(ExplorerItem,state.pathItems,{state,actions}),
+		]),
 	]),
 	
 	!state.pathItems&&
@@ -50,18 +120,126 @@ function ViewExplorer({state,actions}){return[
 	state.pathItems_waitFor&&
 	node_dom("h3[innerText=Warte auf Server ...][style=color:orange]"),
 ]}
-function ExplorerItem({I,state,actions}){return[ // component, map: Explorer Items
-	node_dom("li",null,[
-		node_dom("a",{
-			innerText: I.name,
-			onclick:(
-				I.type==="directory"
-				?	()=> actions.assign({path: state.path+I.name})
-				:	()=> window.open(location.protocol+"//"+location.host+state.path+I.name)
-			),
-		}),
-	]),
-]}
+function ExplorerItem({I,state,actions}){
+	const fileExtension=I.type==="directory"?null:(
+		I.name.startsWith(".")
+		?	null
+		:	I.name.split(".")
+				.filter((item,index)=>index>0)
+				.map(item=>item.toLowerCase())
+				.join(".")
+	);
+	return[ // component, map: Explorer Items
+		node_dom("tr",null,[
+			node_dom("td",null,[
+				node(PreviewItem,{state,I,fileExtension}),
+			]),
+			node_dom("td",null,[
+				node_dom("a",{
+					href: (
+						location.protocol+"//"+location.host+
+						(I.type==="directory"
+						?	location.pathname+"#"+I.path
+						:	I.path
+						)
+					),
+					innerText: I.name,
+					onclick:(
+						I.type==="directory"
+						?	event=>{
+								event.preventDefault();
+								actions.assign({path: I.path});
+							}
+						:	event=>{
+								event.preventDefault();
+								window.open(location.protocol+"//"+location.host+I.path);
+							}
+					),
+				}),
+			]),
+			node_dom("td",null,[
+				I.type!=="directory"&&
+				node_dom("a",{
+					download: I.name,
+					href: I.path,
+					innerText: "Download",
+					onclick: event=>{
+						const downloadName=prompt("Speichern als: ",I.name);
+						if(downloadName) event.target.download=downloadName;
+						else event.preventDefault();
+					},
+				}),
+			]),
+			node_dom("td",{
+				innerText: I.type,
+			}),
+		]),
+	];
+}
+function PreviewItem({state,I,fileExtension}){
+	console.log(I.name,fileExtension);
+	const previewImg=fileExtensions.find(item=>isExtention(fileExtension,item[0]));
+
+	return[ // component, Explorer Preview Item
+		fileExtension&&
+		I.type!=="directory"&&
+		node_dom("span",null,[
+			previewItems.img.some(item=>isExtention(fileExtension,item))&&
+			node_dom("img",{
+				height: 16,
+				src: I.path,
+			}),
+
+			previewItems.video.some(item=>isExtention(fileExtension,item))&&
+			node_dom("video[muted][autoplay][algin=top]",{
+				height: 16,
+				onplay: event=> event.target.muted=true,
+				onclick: event=>{event.target.currentTime=0;event.target.play()},
+				src: I.path,
+			}),
+
+			previewItems.audio.some(item=>isExtention(fileExtension,item))&&
+			node_dom("img[algin=top]",{
+				height: 16,
+				onclick: event=>{
+					const img=event.target;
+					const player=event.target.player;
+					if(player.paused){
+						player.currentTime=0;
+						player.play();
+					}
+					else player.pause();
+				},
+				onload: event=>{
+					const img=event.target;
+					const player=new Audio(I.path);
+					img.onload=null; // this function executed 1 time!
+					event.target.player=player;
+					const changePlayback=()=>{
+						if(player.paused) img.src="/files/img/playBTN.png";
+						else img.src="/files/img/pauseBTN.png";
+					};
+					player.onpause=changePlayback;
+					player.onplay=changePlayback;
+					player.onended=changePlayback;
+				},
+				src: "/files/img/playBTN.png",
+			}),
+
+			previewImg&&
+			node_dom("img[algin=top]",{
+				height: 16,
+				src: previewImg[1],
+			}),
+		]),
+
+		I.type==="directory"&&
+		node_dom("img[algin=top]",{
+			src: folderIcon,
+			height: 16,
+		})
+	];
+}
 
 // INIT/MAIN FUNCTION
 init(()=>{
