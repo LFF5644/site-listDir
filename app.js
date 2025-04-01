@@ -72,15 +72,15 @@ const model={
 };
 
 // library functions
-function isExtension(extensionsFromFile,hasExtention){
-	if(!extensionsFromFile||!hasExtention) return false;
+function isExtension(extensionsFromFile,hasExtension){
+	if(!extensionsFromFile||!hasExtension) return false;
 	if(!extensionsFromFile.startsWith(".")) extensionsFromFile="."+extensionsFromFile;
 
 	let end=false;
-	let search=hasExtention;
+	let search=hasExtension;
 	let start=false;
-	if(hasExtention.startsWith("*")) start=true;
-	if(hasExtention.endsWith("*")) end=true;
+	if(hasExtension.startsWith("*")) start=true;
+	if(hasExtension.endsWith("*")) end=true;
 
 	//debugger;
 
