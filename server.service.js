@@ -9,6 +9,13 @@ const dynamic={
 	serverSocket: null,
 };
 
+const forbiddenFolder=[
+	"/files/records/",
+];
+const forbiddenFiles=[
+	"/files/records/anrufbeantworterL3P3.wav",
+];
+
 const socketListeners={
 	getFolderItems: async(folder="",callback=fn)=>{
 		folder=removeNotAllowed(folder);
@@ -25,6 +32,15 @@ const socketListeners={
 			callback(null);
 			return;
 		}
+		if(forbiddenFolder.includes(folder)){
+			items=[];
+			log("forbidden folder: "+folder);
+			callback(null);
+			return;
+		}
+
+		items=items.filter(item=>!forbiddenFiles.includes(folder+item));
+		items=items.filter(item=>!forbiddenFolder.some(i=>(folder+item).startsWith(i)));
 		/*if(items) items=items.map(item=>({
 			id: randomBytes(8).toString("hex"),
 			name: item.name,
