@@ -57,16 +57,28 @@ const previewItems={
 
 const model={
 	init:()=>({
+		client_id: null,
 		connected: false,
 		hash: unescape(location.hash.substring(1)),
 		path: "/",
 		pathItems_waitFor: true,
 		pathItems: null,
+		remote_error: null,
+		stream_connection: false,
 		view: "explorer",
 	}),
 	assign:(state,object)=>({
 		...state,
 		...object,
+	}),
+	addPathItem: (state,...items)=>({
+		...state,
+		pathItems: [
+			...(state.pathItems||[]),
+			...items,
+		]
+		// sort by directory & ABC
+		.sort((a,b)=>(a.type==="directory"&&b.type!=="directory")?-1:(a.type!=="directory"&&b.type==="directory")?1:a.name.localeCompare(b.name)),
 	}),
 	debugger: s=>console.log(s)?s:s,
 };
@@ -122,17 +134,23 @@ function ViewExplorer({state,actions}){return[
 	
 	state.pathItems&&
 	state.pathItems.length===0&&
+	!state.pathItems_waitFor&&
 	node_dom("h3[innerHTML=Verzeichnis ist leer]"),
 
-	!state.pathItems&&
-	!state.pathItems_waitFor&&
-	node_dom("h3[innerText=Verzeichnis nicht gefunden!][style=color:red]"),
+	//!state.pathItems&&
+	//!state.pathItems_waitFor&&
+	//node_dom("h3[innerText=Verzeichnis nicht gefunden!][style=color:red]"),
 
-	!state.pathItems&&
+	//!state.pathItems&&
 	state.pathItems_waitFor&&
 	node_dom("div",null,[
 		node_dom("h3[innerText=Warte auf Server ...][style=color:orange]"),
 		node_dom("progress"),
+	]),
+	state.remote_error&&
+	node_dom("div",null,[
+		node_dom("h3[innerText=Server-Fehler][style=color:orange]"),
+		node_dom("p",{innerText: state.remote_error}),
 	]),
 ]}
 function ExplorerItem({I,state,actions}){
@@ -193,7 +211,7 @@ function ExplorerItem({I,state,actions}){
 	];
 }
 function PreviewItem({state,I,fileExtension}){
-	console.log(I.name,fileExtension);
+	//console.log(I.name,fileExtension);
 	const previewImg=fileExtensions.find(item=>isExtension(fileExtension,item[0]));
 
 	return[ // component, Explorer Preview Item
@@ -257,26 +275,70 @@ function PreviewItem({state,I,fileExtension}){
 	];
 }
 
+// Event Stream
+function initialiseStream(actions){
+	const stream=new EventSource("/raw/explorer.event");
+	stream.addEventListener("init-id",event=>{
+		const client_id=event.data;
+		console.log("init-id: "+client_id);
+		actions.assign({
+			client_id,
+		});
+	});
+	stream.addEventListener("add-item",event=>{
+		const item=JSON.parse(event.data);
+		console.log("add-item:",item);
+		actions.addPathItem(item);
+	});
+	stream.addEventListener("sending-finish",event=>{
+		const result=event.data;
+		console.log("sending-finish:",result);
+		actions.assign({
+			pathItems_waitFor: false,
+			remote_error: result==="OK"?null:result,
+		});
+	});
+}
+async function makeRequest(client_id,request,data={}){
+	const API_URL="/web/listDir/post.api";
+	const head=await fetch(API_URL,{
+		method: "post",
+		headers:{
+			"Content-Type": "application/json",
+		},
+		body: JSON.stringify({
+			...data,
+			action: request,
+			client_id,
+		}),
+	});
+	const response=(await head.text()).trim();
+	if(response!=="OK"){
+		alert("request nicht durchgelassen: "+request+"\nAntwort: "+response);
+	}
+	else console.log("successful action: '"+request+"' getting response via eventStream.");
+}
+
 // INIT/MAIN FUNCTION
 init(()=>{
 	const [state,actions]=hook_model(model);
 
-	const socket=hook_memo(()=> // connect & create socket
-		io({path:"/bind/socket/listDir"})
-	);
+	//const socket=hook_memo(()=> // connect & create socket
+	//	io({path:"/bind/socket/listDir"})
+	//);
 
 	hook_effect(()=>{
-		// make vars global
+		// make vars global. HACKY, not recommended!
 		window.actions=actions;
-		window.socket=socket;
+		//window.socket=socket;
 
 		// add socket event listeners
-		socket.on("connect",()=>{
-			actions.assign({connected: true});
-		});
-		socket.on("disconnect",()=>{
-			actions.assign({connected: false});
-		});
+		// socket.on("connect",()=>{
+		// 	actions.assign({connected: true});
+		// });
+		// socket.on("disconnect",()=>{
+		// 	actions.assign({connected: false});
+		// });
 
 		// add other event listeners
 		window.onhashchange=()=>{
@@ -284,16 +346,20 @@ init(()=>{
 				hash: unescape(location.hash.substring(1)),
 			});
 		};
-
 	});
+	hook_effect(connection=>{
+		if(connection) return; // already connected.
+		window.stream=initialiseStream(actions);
+	},state.stream_connection);
 
 	// on socket connection change
-	hook_effect(connected=>{
-		console.log("Socket has "+(connected?"connected":"disconnected")+"!");
-	},[state.connected]);
+	// hook_effect(connected=>{
+	// 	console.log("Socket has "+(connected?"connected":"disconnected")+"!");
+	// },[state.connected]);
 
 	// on path change
-	hook_effect(path=>{
+	hook_effect((path,client_id)=>{
+		if(!client_id) return;
 		if(!path.endsWith("/")){
 			actions.assign({path: path+"/"});
 			return;
@@ -309,15 +375,17 @@ init(()=>{
 			pathItems: null,
 		});
 
-		socket.emit("getFolderItems",path,items=>{
-			console.log("new path items:",items);
-			actions.assign({
-				pathItems_waitFor: false,
-				pathItems: items,
-			});
-		});
+		// make an fetch post request here.
+		makeRequest(client_id,"get-folderItems",{target:path});
+		// socket.emit("getFolderItems",path,items=>{
+		// 	console.log("new path items:",items);
+		// 	actions.assign({
+		// 		pathItems_waitFor: false,
+		// 		pathItems: items,
+		// 	});
+		// });
 
-	},[state.path]);
+	},[state.path,state.client_id]);
 
 	// on hash change && view explorer
 	hook_effect(hash=>{
@@ -326,9 +394,9 @@ init(()=>{
 	},[state.hash]);
 
 	return[null,[
-		node_dom("h1[innerText=Datei Explorer]",{
+		node_dom("h1[innerText=Datei-Explorer]",{
 			S:{
-				color: state.connected?"":"red",
+				color: state.stream_connection?"":"red",
 			},
 		}),
 

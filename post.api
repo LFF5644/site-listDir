@@ -1,0 +1,21 @@
+<?
+	const server=service_require("web/listDir/server");
+
+	const {action,client_id}=input;
+	const client=server.clients.get(client_id);
+	
+	function end(code,msg){
+		response.write(msg);
+		response.statusCode=code;
+		// throw here!
+	}
+
+	if(!client) return end(400,"client not exist."); // client id wrong or undefined.
+	log("action: "+action);
+
+	if(action==="get-folderItems"){
+		client.requests.push(["get-folderItems",input.target]);
+		client.check();
+		return end(200,"OK");
+	}
+?>

@@ -1,0 +1,36 @@
+<?
+	const CONNECTION_KEEP_ALIVE_INTERVAL=1e4;
+	response.setHeader("Cache-Control","no-cache");
+	response.setHeader("Connection","keep-alive");
+	response.setHeader("Content-Type","text/event-stream");
+
+	const server=service_require("web/listDir/server");
+	const client=server.newClient();
+
+	let closed=false;
+	let id=0;
+
+	const interval_keepAlive=setInterval(()=>{
+		// KEEP CONNECTION ALIVE, SAYS NGINX THIS IS AN OPEN CONNECTION.
+		response.write("event: log\ndata: KEEP-ALIVE-MESSAGE: "+client.id+"\nid:"+(id+=1)+"\n\n");
+	},CONNECTION_KEEP_ALIVE_INTERVAL);
+
+	request.on("close",()=>{
+		// Client closed connection.
+		closed=true;
+		clearInterval(interval_keepAlive);
+		server.removeClient(client);
+	});
+
+	response.write("event: init-id\ndata: "+client.id+"\nid: "+(id+=1)+"\n\n");
+
+	const stream=server.eventGenerator(client.id);
+	for await(const event of stream){
+		if(closed) break;
+		response.write("event: "+event[0]+"\n"+"data: "+event[1]+"\nid: "+(id+=1)+"\n\n");
+	}
+
+	// server closed connection.
+	clearInterval(interval_keepAlive);
+	response.write("event: log\ndata: SERVER-CLOSED-CONNECTION\nid:"+(id+=1)+"\n\n");
+?>
